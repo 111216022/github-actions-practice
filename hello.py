@@ -4,6 +4,6 @@ name = "禾芊"
 print("Hello,", name)
 
 a = 10
-b = 20
+b = 2
 
-print("10 + 20 =", a + b)
+print("10 + 2 =", a + b)
