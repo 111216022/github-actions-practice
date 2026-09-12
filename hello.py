@@ -3,7 +3,7 @@ print("Hello GitHub Actions!")
 name = "禾芊"
 print("Hello,", name)
 
-a = 10
+a = 1
 b = 2
 
-print("10 + 2 =", a + b)
+print("1 + 2 =", a + b)
