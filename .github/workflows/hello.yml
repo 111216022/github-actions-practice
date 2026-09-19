@@ -1,4 +1,4 @@
-name: Run Hello Python Script
+name: Validate hello.py
 
 on:
   push:
@@ -11,5 +11,10 @@ jobs:
       - name: Get repository files
         uses: actions/checkout@v6
 
-      - name: Run hello.py
-        run: python hello.py
+      - name: Validate hello.py against sum test cases
+        run: |
+          for input in testcases/sum/*.input.txt; do
+            expected="${input%.input.txt}.expected.txt"
+            echo "Test case: $input"
+            python validator.py --input "$input" --expected "$expected"
+          done

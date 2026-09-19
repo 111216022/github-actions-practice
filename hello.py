@@ -1,9 +1,12 @@
-print("Hello GitHub Actions!")
+"""請在這裡撰寫解答：從標準輸入讀取測資，將答案印到標準輸出。"""
 
-name = "禾芊"
-print("Hello,", name)
+import sys
 
-a = 1
-b = 2
 
-print("1 + 2 =", a + b)
+def main():
+    a, b = map(int, sys.stdin.read().split())
+    print(a + b)
+
+
+if __name__ == "__main__":
+    main()
