@@ -1,20 +1,47 @@
-name: Validate hello.py
+name: Validate hello.py # 工作流程名稱，顯示在 GitHub 的 Actions 頁面。
 
-on:
-  push:
+on: # 定義哪些事件會觸發此工作流程。
+  push: # 推送提交或標籤時觸發；此處沒有設定分支或路徑篩選。
 
-jobs:
-  run-python:
-    runs-on: ubuntu-latest
+permissions:
+  contents: read # 只需要讀取儲存庫檔案。
 
-    steps:
-      - name: Get repository files
-        uses: actions/checkout@v6
+jobs: # 定義工作流程中要執行的工作。
+  run-python: # 此工作的識別名稱，可自行命名。
+    runs-on: ubuntu-latest # 使用 GitHub 提供的 Ubuntu 執行環境。
+    timeout-minutes: 5 # 限制整個工作的執行時間。
 
-      - name: Validate hello.py against sum test cases
+    steps: # 依照下列順序執行各步驟；「-」代表清單中的一個項目。
+      - name: Get repository files # 此步驟在 Actions 執行紀錄中的顯示名稱。
+        uses: actions/checkout@v6 # 使用 checkout action 的 v6 版本，把儲存庫檔案取到執行環境。
+
+      - name: Set up Python
+        uses: actions/setup-python@v6 # 準備指定版本的 Python。
+        with:
+          python-version: '3.12'
+
+      - name: Run validator
+        shell: bash # 下方迴圈使用 Ubuntu 的 Bash 語法。
         run: |
-          for input in testcases/sum/*.input.txt; do
+          # 找出所有輸入測資；沒有測資時視為失敗，避免誤判通過。
+          shopt -s nullglob
+          inputs=(testcases/sum/*.input.txt)
+          if [ "${#inputs[@]}" -eq 0 ]; then
+            echo "::error::No test cases found in testcases/sum"
+            exit 1
+          fi
+
+          # 每組呼叫一次 validator；失敗後繼續，讓學生看到全部結果。
+          status=0
+          for input in "${inputs[@]}"; do
             expected="${input%.input.txt}.expected.txt"
-            echo "Test case: $input"
-            python validator.py --input "$input" --expected "$expected"
+            echo "::group::${input}"
+            if python validator.py --input "$input" --expected "$expected" --timeout 5; then
+              : # 此組通過，保留目前的整體結果。
+            else
+              status=1 # 答案錯誤、執行異常、逾時或測資缺失皆判定失敗。
+            fi
+            echo "::endgroup::"
           done
+          # 全部通過回傳 0（綠勾）；任一組失敗回傳 1（紅叉）。
+          exit "$status"

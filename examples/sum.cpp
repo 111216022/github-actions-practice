@@ -1,11 +1,11 @@
-#include <iostream>
+#include <iostream> // 載入標準輸入輸出功能，提供 cin、cout 與 cerr。
 
-int main() {
-    int a, b;
-    if (!(std::cin >> a >> b)) {
-        std::cerr << "Expected two integers\n";
-        return 1;
-    }
-    std::cout << a + b << '\n';
-    return 0;
-}
+int main() { // 程式入口；回傳整數作為行程的結束代碼。
+    int a, b; // 宣告兩個整數變數，稍後從輸入取得值。
+    if (!(std::cin >> a >> b)) { // >> 依序讀取兩個整數並略過空白；! 表示讀取失敗時進入此區塊。
+        std::cerr << "Expected two integers\n"; // 將輸入錯誤提示送到標準錯誤；\n 表示換行。
+        return 1; // 提前結束程式，以非零代碼表示失敗，不再計算答案。
+    } // 結束輸入失敗的處理區塊。
+    std::cout << a + b << '\n'; // 將兩數總和及換行寫到標準輸出；總和須在 int 可表示範圍內。
+    return 0; // 以代碼 0 表示程式正常結束。
+} // 結束 main 函式。

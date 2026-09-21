@@ -1,7 +1,18 @@
 # github-actions-practice
 Practice project for learning GitHub Actions
 
-哈囉 我要上台大 (希望可以)
+## 逐行註解閱讀方式
+
+專案的 Python、C++、GitHub Actions 設定及 `.gitignore` 已加入繁體中文註解。
+Python 的 `#`、C++ 的 `//` 後面是說明，不會作為程式執行；Python 的三引號文字是文件字串。
+註解放在程式上一行時，說明緊接著的那一行；放在行尾時，說明同一行。
+空白行用來分隔段落；Python 的縮排則決定函式、迴圈與條件判斷的範圍，不可任意刪除。
+Markdown 的 `#` 是標題、三個反引號包住的是程式區塊，文件本身不會自動執行指令。
+
+建議依序閱讀 [hello.py](hello.py)、[validator.py](validator.py)、[validator_core.py](validator_core.py)，
+再閱讀 [核心測試](tests/test_validator_core.py)、[CLI 測試](tests/test_validator_cli.py)、
+[GitHub Actions](.github/workflows/hello.yml) 與 [C++ 範例](examples/sum.cpp)。
+所有 `.txt` 都是純資料；各檔案每一行的內容與用途整理在 [測資逐行說明](docs/test-data-lines.md)。
 
 ## Validator：CLI 單筆測資驗證工具
 
@@ -17,6 +28,7 @@ Practice project for learning GitHub Actions
 在專案資料夾執行，指定輸入測資與正確答案檔案：
 
 ```powershell
+# 執行驗證工具；--input 指定輸入檔，--expected 指定答案檔；這兩個檔案需先自行準備。
 python validator.py --input ".\input.txt" --expected ".\output.txt"
 ```
 
@@ -31,6 +43,7 @@ python validator.py --input ".\input.txt" --expected ".\output.txt"
 例如使用專案內的加法測資：
 
 ```powershell
+# 使用 examples 內附的測資與答案，並把解答程式的時間上限設成 3 秒。
 python validator.py --input ".\examples\input.txt" --expected ".\examples\expected.txt" --timeout 3
 ```
 
@@ -44,19 +57,40 @@ python validator.py --input ".\examples\input.txt" --expected ".\examples\expect
 涵蓋正數、零、負數、正負混合、相消、大數、32 位元整數邊界、分行與空白格式。
 
 ```powershell
+# 執行第 01 組正數加法測資，將 hello.py 的實際結果與同名答案檔比對。
 python validator.py --input ".\testcases\sum\01_positive.input.txt" --expected ".\testcases\sum\01_positive.expected.txt"
 ```
 
 資料夾說明中也提供跑完全部 12 組的 PowerShell 迴圈。
 這些測資適用於 `hello.py` 範例的兩數相加規格；其他題目需要對應的題目規格與答案。
 
-GitHub Actions 的 [hello.yml](.github/workflows/hello.yml) 會在 push 時逐筆驗證這 12 組測資；任何一組失敗都會讓工作流程失敗。
+### GitHub Actions 自動驗證
+
+[hello.yml](.github/workflows/hello.yml) 會在每次 push 時自動觸發，不限分支。
+第一次請將 Workflow、`hello.py`、`validator.py`、`validator_core.py` 與 `testcases/sum` 測資一併提交並推送到 GitHub。
+之後學生只要修改 `hello.py`、commit 並 push，就不需要在本機開終端機執行 validator。
+
+```text
+學生修改 hello.py → git push → Workflow 自動觸發 → validator 逐筆驗證
+                                                   ├─ 全部 PASS → 綠勾
+                                                   └─ 任一 FAIL → 紅叉
+```
+
+Workflow 會準備 Python 3.12，搜尋 `testcases/sum/*.input.txt`，並搭配同名的 `.expected.txt` 呼叫 validator。
+目前共 12 組；日後新增同格式的測資檔案並推送，也會自動納入驗證。
+每組解答最多執行 5 秒，失敗後仍會繼續驗證其餘測資。
+答案錯誤、程式異常、逾時、缺少答案檔或完全沒有測資，都會讓驗證步驟失敗。
+
+推送後，到 GitHub 儲存庫的 **Actions → Validate hello.py → 該次執行 → run-python → Run validator**，
+展開各測資群組即可查看 PASS／FAIL；失敗時會顯示原因及相關輸出。
+GitHub 依步驟的結束代碼判定成功或失敗（[官方說明](https://docs.github.com/en/actions/how-tos/create-and-publish-actions/set-exit-codes)）。
 
 ### 參數說明
 
 查看完整參數：
 
 ```powershell
+# 顯示可用參數與預設值，顯示完就結束，不會執行 hello.py。
 python validator.py --help
 ```
 
@@ -70,6 +104,8 @@ PASS：通過：實際輸出與預期輸出相符。
 --- 實際輸出（stdout） ---
 5
 ```
+
+上述四行依序表示：驗證是否通過與原因、耗時及解答結束代碼、實際輸出區塊的標題、解答印出的答案。
 
 答案不同時會顯示 `FAIL`、第一個不同的行號、實際輸出與預期輸出。
 程式異常結束或逾時也會顯示 `FAIL`；有標準錯誤（stderr）時一併列出。
@@ -108,5 +144,6 @@ PowerShell 可使用 `$LASTEXITCODE` 取得結束代碼。
 執行測試：
 
 ```powershell
+# -m 執行 unittest 模組；discover 自動尋找測試；-s tests 指定資料夾；-v 顯示每個測試的詳細結果。
 python -m unittest discover -s tests -v
 ```
