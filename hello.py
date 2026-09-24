@@ -9,7 +9,7 @@ def main():
     # read() 讀到輸入結束（EOF）；split() 按空白切開；map(int, ...) 轉成整數，再分別放入 a、b，必須恰好有兩個數字。
     a, b = map(int, sys.stdin.read().split())
     # 計算 a + b，將答案印到標準輸出，並在最後加上換行。
-    print(a - b)
+    print(a + b)
 
 
 # 只有直接執行此檔案時才進入下方區塊；被其他檔案 import 時不執行。
