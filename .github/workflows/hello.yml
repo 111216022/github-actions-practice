@@ -20,6 +20,12 @@ jobs: # 定義工作流程中要執行的工作。
         with:
           python-version: '3.12'
 
+      - name: Build C++ validator
+        run: g++ -std=c++17 -O2 -Wall -Wextra -pedantic validator.cpp -o validator
+
+      - name: Test validator
+        run: python -m unittest discover -s tests -v
+
       - name: Run validator
         shell: bash # 下方迴圈使用 Ubuntu 的 Bash 語法。
         run: |
@@ -36,7 +42,7 @@ jobs: # 定義工作流程中要執行的工作。
           for input in "${inputs[@]}"; do
             expected="${input%.input.txt}.expected.txt"
             echo "::group::${input}"
-            if python validator.py --input "$input" --expected "$expected" --timeout 5; then
+            if ./validator --input "$input" --expected "$expected" --timeout 5; then
               : # 此組通過，保留目前的整體結果。
             else
               status=1 # 答案錯誤、執行異常、逾時或測資缺失皆判定失敗。

@@ -9,8 +9,8 @@ Python 的 `#`、C++ 的 `//` 後面是說明，不會作為程式執行；Pytho
 空白行用來分隔段落；Python 的縮排則決定函式、迴圈與條件判斷的範圍，不可任意刪除。
 Markdown 的 `#` 是標題、三個反引號包住的是程式區塊，文件本身不會自動執行指令。
 
-建議依序閱讀 [hello.py](hello.py)、[validator.py](validator.py)、[validator_core.py](validator_core.py)，
-再閱讀 [核心測試](tests/test_validator_core.py)、[CLI 測試](tests/test_validator_cli.py)、
+建議依序閱讀 [hello.py](hello.py)、[validator.cpp](validator.cpp)，
+再閱讀 [CLI 測試](tests/test_validator_cli.py)、
 [GitHub Actions](.github/workflows/hello.yml) 與 [C++ 範例](examples/sum.cpp)。
 所有 `.txt` 都是純資料；各檔案每一行的內容與用途整理在 [測資逐行說明](docs/test-data-lines.md)。
 
@@ -18,7 +18,16 @@ Markdown 的 `#` 是標題、三個反引號包住的是程式區塊，文件本
 
 從輸入測資檔案讀取內容，固定執行專案內的 `hello.py`，再與預期輸出檔案自動比對。
 結果直接顯示在終端機，不需要 GUI 或互動操作。
-需要 Python 3.9 以上，無須安裝額外套件。
+需要支援 C++17 的編譯器，以及 Python 3.9 以上（用來執行受測的 hello.py）。
+
+先在專案根目錄編譯，將執行檔放在 hello.py 旁邊：
+
+```powershell
+g++ -std=c++17 -O2 -Wall -Wextra validator.cpp -o validator.exe
+```
+
+Linux 使用 `g++ -std=c++17 -O2 -Wall -Wextra validator.cpp -o validator`，下列指令的 `.\validator.exe` 改成 `./validator`。
+MSVC 可在 Developer PowerShell 使用 `cl /std:c++17 /EHsc /utf-8 validator.cpp /Fe:validator.exe`。
 
 ### 使用方式
 
@@ -29,7 +38,7 @@ Markdown 的 `#` 是標題、三個反引號包住的是程式區塊，文件本
 
 ```powershell
 # 執行驗證工具；--input 指定輸入檔，--expected 指定答案檔；這兩個檔案需先自行準備。
-python validator.py --input ".\input.txt" --expected ".\output.txt"
+.\validator.exe --input ".\input.txt" --expected ".\output.txt"
 ```
 
 - `--input`：輸入測資檔案，內容會自動傳給程式的標準輸入（stdin）。
@@ -38,13 +47,14 @@ python validator.py --input ".\input.txt" --expected ".\output.txt"
 
 路徑相對於下指令時所在的資料夾，也可以使用絕對路徑；路徑含空格時請加引號。
 每次執行都會重新讀取檔案，不需要將測資貼進程式碼。
-驗證目標固定為 `validator.py` 同一個資料夾的 `hello.py`，使用啟動 validator 的 Python 執行。
+驗證目標固定為 validator 執行檔同一個資料夾的 `hello.py`。
+Windows 預設使用 PATH 中的 `python`，Linux 使用 `python3`；可用 `--python` 指定 Python 執行檔路徑。
 
 例如使用專案內的加法測資：
 
 ```powershell
 # 使用 examples 內附的測資與答案，並把解答程式的時間上限設成 3 秒。
-python validator.py --input ".\examples\input.txt" --expected ".\examples\expected.txt" --timeout 3
+.\validator.exe --input ".\examples\input.txt" --expected ".\examples\expected.txt" --timeout 3
 ```
 
 [examples/input.txt](examples/input.txt) 內容為 `2 3`；
@@ -58,7 +68,7 @@ python validator.py --input ".\examples\input.txt" --expected ".\examples\expect
 
 ```powershell
 # 執行第 01 組正數加法測資，將 hello.py 的實際結果與同名答案檔比對。
-python validator.py --input ".\testcases\sum\01_positive.input.txt" --expected ".\testcases\sum\01_positive.expected.txt"
+.\validator.exe --input ".\testcases\sum\01_positive.input.txt" --expected ".\testcases\sum\01_positive.expected.txt"
 ```
 
 資料夾說明中也提供跑完全部 12 組的 PowerShell 迴圈。
@@ -67,7 +77,7 @@ python validator.py --input ".\testcases\sum\01_positive.input.txt" --expected "
 ### GitHub Actions 自動驗證
 
 [hello.yml](.github/workflows/hello.yml) 會在每次 push 時自動觸發，不限分支。
-第一次請將 Workflow、`hello.py`、`validator.py`、`validator_core.py` 與 `testcases/sum` 測資一併提交並推送到 GitHub。
+第一次請將 Workflow、`hello.py`、`validator.cpp`、`tests` 與 `testcases/sum` 測資一併提交並推送到 GitHub。
 之後學生只要修改 `hello.py`、commit 並 push，就不需要在本機開終端機執行 validator。
 
 ```text
@@ -76,7 +86,7 @@ python validator.py --input ".\testcases\sum\01_positive.input.txt" --expected "
                                                    └─ 任一 FAIL → 紅叉
 ```
 
-Workflow 會準備 Python 3.12，搜尋 `testcases/sum/*.input.txt`，並搭配同名的 `.expected.txt` 呼叫 validator。
+Workflow 會編譯 C++17 Validator、準備 Python 3.12 並執行整合測試，再搜尋 `testcases/sum/*.input.txt`，搭配同名的 `.expected.txt` 呼叫 validator。
 目前共 12 組；日後新增同格式的測資檔案並推送，也會自動納入驗證。
 每組解答最多執行 5 秒，失敗後仍會繼續驗證其餘測資。
 答案錯誤、程式異常、逾時、缺少答案檔或完全沒有測資，都會讓驗證步驟失敗。
@@ -91,7 +101,7 @@ GitHub 依步驟的結束代碼判定成功或失敗（[官方說明](https://do
 
 ```powershell
 # 顯示可用參數與預設值，顯示完就結束，不會執行 hello.py。
-python validator.py --help
+.\validator.exe --help
 ```
 
 ### CLI 結果
@@ -136,12 +146,10 @@ PowerShell 可使用 `$LASTEXITCODE` 取得結束代碼。
 ### 程式結構與測試
 
 - `hello.py`：使用者撰寫的解答，目前為兩數相加範例。
-- `validator.py`：CLI 參數、測資檔案讀取、執行 `hello.py`、結果顯示與結束代碼。
-- `validator_core.py`：執行程式與比對答案。
-- `tests/test_validator_core.py`：核心功能測試。
+- `validator.cpp`：CLI 參數、測資檔案讀取、子程序執行、逾時控制、答案比對與結果顯示。
 - `tests/test_validator_cli.py`：透過 CLI 實際執行程式的整合測試。
 
-執行測試：
+先編譯 Validator，再執行測試：
 
 ```powershell
 # -m 執行 unittest 模組；discover 自動尋找測試；-s tests 指定資料夾；-v 顯示每個測試的詳細結果。

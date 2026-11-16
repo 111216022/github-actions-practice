@@ -25,11 +25,11 @@
 | 11_separate_lines | 18、24 放在不同的行 | 42 |
 | 12_whitespace | 18、24 之間使用 Tab，開頭含空格 | 42 |
 
-將解答寫在專案的 hello.py，然後在專案根目錄執行：
+將解答寫在專案的 hello.py，先依根目錄 README 編譯 validator.cpp，再在專案根目錄執行：
 
 ```powershell
 # 在專案根目錄執行 validator，將第 01 組輸入送給 hello.py，再與該組答案比對。
-python validator.py --input ".\testcases\sum\01_positive.input.txt" --expected ".\testcases\sum\01_positive.expected.txt"
+.\validator.exe --input ".\testcases\sum\01_positive.input.txt" --expected ".\testcases\sum\01_positive.expected.txt"
 ```
 
 一次跑完全部測資可使用 PowerShell 迴圈；每一筆都會個別啟動程式：
@@ -44,7 +44,7 @@ Get-ChildItem -LiteralPath ".\testcases\sum" -Filter "*.input.txt" | Sort-Object
     # 顯示目前檔名；$() 讓雙引號字串內的屬性存取先求值，再插入文字。
     Write-Host "測資：$($_.Name)"
     # 用目前輸入檔與配對答案啟動 validator；每組都會重新執行 hello.py。
-    python validator.py --input $_.FullName --expected $expectedPath
+    .\validator.exe --input $_.FullName --expected $expectedPath
     # $LASTEXITCODE 是剛執行程式的結束代碼；-ne 表示不等於，非零就將失敗數加一。
     if ($LASTEXITCODE -ne 0) { $failedCount += 1 }
 } # 結束每個檔案要執行的區塊，直到所有輸入檔都處理完。
