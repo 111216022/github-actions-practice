@@ -21,7 +21,8 @@ class ValidatorCliTests(unittest.TestCase):
         self.project = self.folder / "project files"
         self.project.mkdir()
         for name in (CLI.name, "hello.py"):
-            shutil.copyfile(CLI.parent / name, self.project / name)
+            # 保留 Linux 執行權限；copyfile 只複製內容，會讓 runner 無法啟動 validator。
+            shutil.copy2(CLI.parent / name, self.project / name)
         self.script = self.project / "hello.py"
         self.input.write_text("2 3\n", encoding="utf-8")
         self.expected.write_text("5\n", encoding="utf-8")
