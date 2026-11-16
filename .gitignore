@@ -7,4 +7,5 @@ __pycache__/
 # C++ 編譯產物
 /validator
 /validator.exe
+/examples/sum.exe
 *.obj

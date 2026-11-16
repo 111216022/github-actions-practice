@@ -20,10 +20,19 @@ Markdown 的 `#` 是標題、三個反引號包住的是程式區塊，文件本
 結果直接顯示在終端機，不需要 GUI 或互動操作。
 需要支援 C++17 的編譯器，以及 Python 3.9 以上（用來執行受測的 hello.py）。
 
+Windows 的 VS Code 已設定使用 `C:\msys64\ucrt64\bin\g++.exe`。
+先開啟要編譯的 `validator.cpp` 或 `examples/sum.cpp`，再按 **Ctrl+Shift+B**，即可在原始碼旁產生同名 `.exe`。
+建置工作會設定編譯所需的 PATH，使用 C++17 並靜態連結編譯器執行階段，產生的程式可直接執行。
+
 先在專案根目錄編譯，將執行檔放在 hello.py 旁邊：
 
 ```powershell
-g++ -std=c++17 -O2 -Wall -Wextra validator.cpp -o validator.exe
+# 將新版編譯器加入目前終端機的 PATH。
+$env:PATH = "C:\msys64\ucrt64\bin;" + $env:PATH
+g++ -std=c++17 -O2 -Wall -Wextra -pedantic -static validator.cpp -o validator.exe
+# 編譯及執行兩數相加的 C++ 範例。
+g++ -std=c++17 -O2 -Wall -Wextra -pedantic -static examples/sum.cpp -o examples/sum.exe
+"2 3" | .\examples\sum.exe
 ```
 
 Linux 使用 `g++ -std=c++17 -O2 -Wall -Wextra validator.cpp -o validator`，下列指令的 `.\validator.exe` 改成 `./validator`。
