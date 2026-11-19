@@ -20,6 +20,9 @@ jobs: # 定義工作流程中要執行的工作。
         with:
           python-version: '3.12'
 
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
       - name: Build C++ validator
         run: g++ -std=c++17 -O2 -Wall -Wextra -pedantic validator.cpp -o validator
 

@@ -1,6 +1,8 @@
 # github-actions-practice
 Practice project for learning GitHub Actions
 
+加密 JSON 測資與 validator 的 `--testcases` 用法，請看 [加密測資說明](docs/encrypted-testcases.md)。
+
 ## 逐行註解閱讀方式
 
 專案的 Python、C++、GitHub Actions 設定及 `.gitignore` 已加入繁體中文註解。

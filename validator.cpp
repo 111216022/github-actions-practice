@@ -255,6 +255,48 @@ fs::path executable_path(const char* argv0) {
 #endif
 }
 
+// Embedded demo key: available to anyone with the source or executable.
+constexpr char EMBEDDED_PRIVATE_KEY[] = R"PEM(-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg3hrfFofeX1mFHUSZ
+mx8C+3X7DtIPngKdG9hftNuJfqehRANCAASy7nOe7RKQE6vDWZe1ick4B8Kyzdru
+aDlwo+/1yaZcV8PbFVx2jJeVzb8+ywg0XGfeKG3/Xz1t7cwwy5Z4i52H
+-----END PRIVATE KEY-----
+)PEM";
+
+struct TestCase {
+    std::string id, input, expected;
+};
+
+// Python handles authenticated decryption and JSON parsing. This length-prefixed
+// bridge preserves arbitrary UTF-8, embedded newlines and trailing whitespace.
+std::string frame(const std::string& value) {
+    return std::to_string(value.size()) + "\n" + value;
+}
+
+size_t read_size(const std::string& data, size_t& offset) {
+    size_t end = data.find('\n', offset);
+    if (end == std::string::npos || end == offset || end - offset > 10)
+        throw std::runtime_error("Invalid decrypted testcase framing");
+    size_t value = 0;
+    for (; offset < end; ++offset) {
+        char c = data[offset];
+        if (c < '0' || c > '9' || value > data.size() / 10)
+            throw std::runtime_error("Invalid decrypted testcase length");
+        value = value * 10 + static_cast<size_t>(c - '0');
+    }
+    ++offset;
+    if (value > data.size()) throw std::runtime_error("Invalid decrypted testcase length");
+    return value;
+}
+
+std::string read_frame(const std::string& data, size_t& offset) {
+    size_t size = read_size(data, offset);
+    if (size > data.size() - offset) throw std::runtime_error("Truncated decrypted testcase");
+    std::string value = data.substr(offset, size);
+    offset += size;
+    return value;
+}
+
 int main(int argc, char** argv) {
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
@@ -276,20 +318,22 @@ int main(int argc, char** argv) {
     argc = wide_count;
     argv = argument_pointers.data();
 #endif
-    std::string input_path, expected_path;
+    std::string input_path, expected_path, testcases_path, private_key_path;
 #ifdef _WIN32
     std::string python = "python";
 #else
     std::string python = "python3";
 #endif
     double timeout = 5;
-    std::string input, expected;
+    std::vector<TestCase> cases;
     fs::path script;
     try {
         for (int i = 1; i < argc; ++i) {
             std::string option = argv[i];
             if (option == "--help" || option == "-h") {
                 std::cout << "validator --input FILE --expected FILE [--timeout SECONDS] [--python EXECUTABLE]\n"
+                             "validator --testcases FILE.enc [--private-key KEY.pem] [--timeout SECONDS] [--python EXECUTABLE]\n"
+                             "Encrypted testcases use the embedded private key unless --private-key is specified.\n"
                              "執行同目錄的 hello.py；預設時間上限為 5 秒。\n";
                 return 0;
             }
@@ -300,6 +344,8 @@ int main(int argc, char** argv) {
             else throw std::runtime_error("缺少參數值：" + option);
             if (option == "--input") input_path = value;
             else if (option == "--expected") expected_path = value;
+            else if (option == "--testcases") testcases_path = value;
+            else if (option == "--private-key") private_key_path = value;
             else if (option == "--python") python = value;
             else if (option == "--timeout") {
                 size_t used = 0;
@@ -309,43 +355,78 @@ int main(int argc, char** argv) {
                     throw std::runtime_error("時間上限必須是大於 0 的有限秒數");
             } else throw std::runtime_error("未知參數：" + option);
         }
-        if (input_path.empty() || expected_path.empty()) throw std::runtime_error("必須指定 --input 與 --expected");
+        if (testcases_path.empty()) {
+            if (input_path.empty() || expected_path.empty() || !private_key_path.empty())
+                throw std::runtime_error("必須指定 --input 與 --expected，或 --testcases");
+        } else if (!input_path.empty() || !expected_path.empty()) {
+            throw std::runtime_error("--testcases 不能混用 --input / --expected");
+        }
         // 含目錄的 Python 路徑須在切換子程序工作目錄前解析。
         if (fs::u8path(python).has_parent_path()) python = fs::absolute(fs::u8path(python)).u8string();
         script = executable_path(argv[0]).parent_path() / "hello.py";
         if (!fs::is_regular_file(script)) throw std::runtime_error("找不到要驗證的 hello.py：" + script.u8string());
-        input = read_test_file(expand_home(input_path));
-        expected = read_test_file(expand_home(expected_path));
+        if (testcases_path.empty()) {
+            cases.push_back({"", read_test_file(expand_home(input_path)), read_test_file(expand_home(expected_path))});
+        } else {
+            auto helper = script.parent_path() / "scripts" / "crypto_testcases.py";
+            if (!fs::is_regular_file(helper)) throw std::runtime_error("Missing scripts/crypto_testcases.py");
+            std::string private_key = private_key_path.empty() ? EMBEDDED_PRIVATE_KEY :
+                                      read_test_file(expand_home(private_key_path));
+            // Pass PEM through stdin, not command-line arguments or a separate key file.
+            std::string request = frame(fs::absolute(expand_home(testcases_path)).u8string()) +
+                                  frame(private_key);
+            Result decoded = run(helper, python, request, 30);
+            if (decoded.timeout || decoded.code != 0)
+                throw std::runtime_error("Testcase decryption failed: " + decoded.err);
+            size_t offset = 0;
+            size_t count = read_size(decoded.out, offset);
+            if (!count) throw std::runtime_error("No testcases found");
+            for (size_t i = 0; i < count; ++i) {
+                TestCase item;
+                item.id = read_frame(decoded.out, offset);
+                item.input = read_frame(decoded.out, offset);
+                item.expected = read_frame(decoded.out, offset);
+                cases.push_back(std::move(item));
+            }
+            if (offset != decoded.out.size()) throw std::runtime_error("Unexpected decrypted testcase data");
+        }
     } catch (const std::exception& error) {
         std::cerr << "error: " << error.what() << '\n'; return 2;
     }
-    try {
-        Result result = run(script, python, input, timeout);
-        auto actual = normalize_output(result.out), answer = normalize_output(expected);
-        bool passed = !result.timeout && result.code == 0 && valid_utf8(result.out) && actual == answer;
-        std::string message;
-        if (result.timeout) message = "執行逾時，已停止執行程式。";
-        else if (result.code != 0) message = "執行失敗：結束代碼 " + std::to_string(result.code);
-        else if (!valid_utf8(result.out)) message = "無法比較：程式輸出不是有效的 UTF-8 文字。";
-        else if (passed) message = "通過：實際輸出與預期輸出相符。";
-        else {
-            size_t i = 0, line = 1;
-            while (i < actual.size() && i < answer.size() && actual[i] == answer[i]) {
-                if (actual[i++] == '\n') ++line;
+    int status = 0;
+    for (const auto& item : cases) {
+        const auto& input = item.input;
+        const auto& expected = item.expected;
+        if (!item.id.empty()) std::cout << "Testcase: " << item.id << '\n';
+        try {
+            Result result = run(script, python, input, timeout);
+            auto actual = normalize_output(result.out), answer = normalize_output(expected);
+            bool passed = !result.timeout && result.code == 0 && valid_utf8(result.out) && actual == answer;
+            std::string message;
+            if (result.timeout) message = "執行逾時，已停止執行程式。";
+            else if (result.code != 0) message = "執行失敗：結束代碼 " + std::to_string(result.code);
+            else if (!valid_utf8(result.out)) message = "無法比較：程式輸出不是有效的 UTF-8 文字。";
+            else if (passed) message = "通過：實際輸出與預期輸出相符。";
+            else {
+                size_t i = 0, line = 1;
+                while (i < actual.size() && i < answer.size() && actual[i] == answer[i]) {
+                    if (actual[i++] == '\n') ++line;
+                }
+                // 一邊缺少行時，差異位於新增的下一行。
+                if ((i == actual.size() && i < answer.size() && answer[i] == '\n') ||
+                    (i == answer.size() && i < actual.size() && actual[i] == '\n')) ++line;
+                message = "未通過：第 " + std::to_string(line) + " 行不同（包含空白差異）。";
             }
-            // 一邊缺少行時，差異位於新增的下一行。
-            if ((i == actual.size() && i < answer.size() && answer[i] == '\n') ||
-                (i == answer.size() && i < actual.size() && actual[i] == '\n')) ++line;
-            message = "未通過：第 " + std::to_string(line) + " 行不同（包含空白差異）。";
+            std::cout << (passed ? "PASS：" : "FAIL：") << message << '\n'
+                      << "耗時：" << std::fixed << std::setprecision(3) << result.elapsed << " 秒；程式結束代碼："
+                      << (result.timeout ? "無" : std::to_string(result.code)) << '\n';
+            print_output("實際輸出（stdout）", result.out);
+            if (!passed) print_output("預期輸出", expected);
+            if (!result.err.empty()) print_output("程式錯誤訊息（stderr）", result.err);
+            if (!passed) status = 1;
+        } catch (const std::exception& error) {
+            std::cout << "FAIL：無法啟動或執行程式：" << error.what() << '\n'; status = 1;
         }
-        std::cout << (passed ? "PASS：" : "FAIL：") << message << '\n'
-                  << "耗時：" << std::fixed << std::setprecision(3) << result.elapsed << " 秒；程式結束代碼："
-                  << (result.timeout ? "無" : std::to_string(result.code)) << '\n';
-        print_output("實際輸出（stdout）", result.out);
-        if (!passed) print_output("預期輸出", expected);
-        if (!result.err.empty()) print_output("程式錯誤訊息（stderr）", result.err);
-        return passed ? 0 : 1;
-    } catch (const std::exception& error) {
-        std::cout << "FAIL：無法啟動或執行程式：" << error.what() << '\n'; return 1;
     }
+    return status;
 }

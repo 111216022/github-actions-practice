@@ -1,0 +1,62 @@
+[
+  {
+    "id": "sum/01_positive",
+    "input": "2 3\n",
+    "expected": "5\n"
+  },
+  {
+    "id": "sum/02_zero",
+    "input": "0 0\n",
+    "expected": "0\n"
+  },
+  {
+    "id": "sum/03_zero_operand",
+    "input": "0 42\n",
+    "expected": "42\n"
+  },
+  {
+    "id": "sum/04_negative",
+    "input": "-12 -8\n",
+    "expected": "-20\n"
+  },
+  {
+    "id": "sum/05_mixed_positive",
+    "input": "-7 20\n",
+    "expected": "13\n"
+  },
+  {
+    "id": "sum/06_mixed_negative",
+    "input": "7 -20\n",
+    "expected": "-13\n"
+  },
+  {
+    "id": "sum/07_cancel",
+    "input": "123456789 -123456789\n",
+    "expected": "0\n"
+  },
+  {
+    "id": "sum/08_large",
+    "input": "1000000000 1000000000\n",
+    "expected": "2000000000\n"
+  },
+  {
+    "id": "sum/09_int_max",
+    "input": "2147483646 1\n",
+    "expected": "2147483647\n"
+  },
+  {
+    "id": "sum/10_int_min",
+    "input": "-2147483647 -1\n",
+    "expected": "-2147483648\n"
+  },
+  {
+    "id": "sum/11_separate_lines",
+    "input": "18\n24\n",
+    "expected": "42\n"
+  },
+  {
+    "id": "sum/12_whitespace",
+    "input": "  18\t24\n",
+    "expected": "42\n"
+  }
+]

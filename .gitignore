@@ -9,3 +9,5 @@ __pycache__/
 /validator.exe
 /examples/sum.exe
 *.obj
+.venv/
+keys/private_key.pem

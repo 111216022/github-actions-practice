@@ -7,6 +7,34 @@
 每個 *.input.txt 是輸入測資，同名的 *.expected.txt 是正確答案。
 每次執行使用一對檔案，檔案內不包含測資筆數。
 
+## 合併成 JSON
+
+在專案根目錄執行以下指令，將 `testcases` 下所有配對測資依路徑排序，合併為 [testcases.json](../testcases.json)：
+
+```powershell
+python scripts/merge_testcases.py
+```
+
+JSON 最外層是陣列，每一筆包含測資識別名稱、輸入與預期輸出，例如：
+
+```json
+[
+  {
+    "id": "sum/01_positive",
+    "input": "2 3\n",
+    "expected": "5\n"
+  }
+]
+```
+
+`input` 和 `expected` 保留原始換行、空格與 Tab（UTF-8 BOM 會移除）。
+每筆仍是獨立測資，不會把所有輸入串成一次程式執行。
+修改原始 `.txt` 後，請重新執行合併指令；缺少配對檔案或沒有測資時會回報錯誤。
+可用 `--source` 指定來源資料夾、`--output` 指定輸出 JSON 路徑。
+目前 validator 與 GitHub Actions 仍使用原本的 `.txt`；JSON 作為合併匯出檔。
+
+## 執行原始測資
+
 每個測資檔案的逐行內容、空格、Tab 與換行說明，請看 [測資逐行說明](../../docs/test-data-lines.md)。
 下方表格每列對應一組輸入與答案檔；Markdown 的 `|` 用來分隔表格欄位。
 
